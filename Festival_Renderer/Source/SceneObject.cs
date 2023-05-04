@@ -197,13 +197,11 @@ public class SceneObject
         public Material(string diffuseTexturePath, string specularTexturePath)
         {
             
-            Color4 = Color4.LightGray;
+            Color4 = Color4.White;
             DiffuseTexture = Texture.LoadFromFile(diffuseTexturePath);
             SpecularTexture = Texture.LoadFromFile(specularTexturePath);
 
         }
-        //TODO: 3 textures to be added diffuse, normal, specular
-        //TODO: implement the metallic and smoothness values in shader
         
     }
 
@@ -244,8 +242,6 @@ public class SceneObject
         GL.BindVertexArray(0);
         
         
-        _objectMaterial.DiffuseTexture.Use(TextureUnit.Texture0);
-        _objectMaterial.SpecularTexture.Use(TextureUnit.Texture1);
         
         Objects.Add(this);
     }
@@ -270,13 +266,15 @@ public class SceneObject
             shader?.SetColor4("objectColor", _objectMaterial.Color4);
             shader?.SetVector3("viewPos", cameraPosition);
             
+            _objectMaterial.DiffuseTexture.Use(TextureUnit.Texture0);
             shader?.SetInt("material.diffuse", 0);
+            _objectMaterial.SpecularTexture.Use(TextureUnit.Texture1);
             shader?.SetInt("material.specular", 1);
             shader?.SetFloat("material.shininess", 32.0f);
             
             shader?.SetVector3("light.ambient",  new Vector3(0.2f, 0.2f, 0.2f) * Statics.Numerics4ToVector3(lightSource._color));
             shader?.SetVector3("light.diffuse",  new Vector3(0.5f, 0.5f, 0.5f) * Statics.Numerics4ToVector3(lightSource._color)); // darken the light a bit to fit the scene
-            shader?.SetVector3("light.specular", new Vector3(1.0f, 1.0f, 1.0f) * 2 *  Statics.Numerics4ToVector3(lightSource._color));
+            shader?.SetVector3("light.specular", new Vector3(1.0f, 1.0f, 1.0f) * Statics.Numerics4ToVector3(lightSource._color));
             shader?.SetVector3("light.position", Statics.Numerics3ToOpentk3(lightSource._position));
         }
         else

@@ -76,7 +76,7 @@ public static Shader? LightShader;
         _skyColor = new(0, 0.1254902f, 0.1882353f);
         _cube = new Primitives.Cube("container2.png","container2_specular.png", 0);
 
-        _light = new Primitives.LightPlane("container2.jpg", "container2.png", 2, true);
+        _light = new Primitives.LightPlane("bricks.jpg", "container.jpg", 2, true);
     }
     
     protected override void OnResize(ResizeEventArgs e)
