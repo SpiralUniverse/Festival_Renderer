@@ -10,7 +10,7 @@ public struct Primitives
         private readonly uint[] _indices;
         public SceneObject SceneObject;
 
-        public Cube(string textureName, uint id)
+        public Cube(string diffuseTextureName, string specularTextureName, uint id)
         {
             _id = id;
             _title = "Cube " + _id;
@@ -65,7 +65,7 @@ public struct Primitives
             };
             
             SceneObject = new SceneObject(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
-                _indices, "Resources//" + textureName);
+                _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
         }
     }
     
@@ -77,7 +77,7 @@ public struct Primitives
         private readonly uint[] _indices;
         public SceneObject SceneObject;
 
-        public Triangle(string textureName, uint id)
+        public Triangle(string diffuseTextureName, string specularTextureName, uint id)
         {
             _id = id;
             _title = "Triangle " + _id;
@@ -94,7 +94,7 @@ public struct Primitives
             };
             
             SceneObject = new SceneObject(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
-                _indices, "Resources//" + textureName);
+                _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
         }
     }
 
@@ -106,7 +106,7 @@ public struct Primitives
         private readonly uint[] _indices;
         public SceneObject SceneObject;
 
-        public Plane(string texturePath, uint id)
+        public Plane(string diffuseTextureName, string specularTextureName, uint id)
         {
             _id = id;
             _title = "Plane " + _id;
@@ -126,7 +126,7 @@ public struct Primitives
             };
 
             SceneObject = new SceneObject(_title, Vector3.Zero, Vector3.One, new Vector3(90, 0, 0),
-                new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices, _indices, "Resources//" + texturePath);
+                new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices, _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
         }
     }
     
@@ -138,7 +138,7 @@ public struct Primitives
         private readonly uint[] _indices;
         public readonly SceneObject SceneObject;
 
-        public LightPlane(string texturePath, uint id, bool isLightSource)
+        public LightPlane(string diffuseTextureName, string specularTextureName, uint id, bool isLightSource)
         {
             _id = id;
             _title = "Light Plane " + _id;
@@ -158,7 +158,7 @@ public struct Primitives
             };
 
             SceneObject = new SceneObject(_title, new Vector3(0, 1, -2.5f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0, 0, 0),
-                Color4.White, _vertices, _indices, "Resources//" + texturePath, isLightSource);
+                Color4.White, _vertices, _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName, isLightSource);
         }
     }
 }
@@ -190,21 +190,16 @@ public class SceneObject
 
     private struct Material
     {
-        public float Metallic;
-        public float Smoothness;
-        public float EmissionStrength;
         public Color4 Color4;
-        public Color4 EmissionColor4;
-        public readonly Texture Texture;
+        public readonly Texture DiffuseTexture;
+        public readonly Texture SpecularTexture;
 
-        public Material(string texturePath, float metallic = 0.5f, float smoothness = 0.5f, float emissionStrength = 0)
+        public Material(string diffuseTexturePath, string specularTexturePath)
         {
-            Metallic = metallic;
-            Smoothness = smoothness;
-            EmissionStrength = emissionStrength;
+            
             Color4 = Color4.LightGray;
-            EmissionColor4 = Color4.Black;
-            Texture = Texture.LoadFromFile(texturePath);
+            DiffuseTexture = Texture.LoadFromFile(diffuseTexturePath);
+            SpecularTexture = Texture.LoadFromFile(specularTexturePath);
 
         }
         //TODO: 3 textures to be added diffuse, normal, specular
@@ -212,9 +207,9 @@ public class SceneObject
         
     }
 
-    public SceneObject(string title, Vector3 position, Vector3 scale, Vector3 rotation, Color4 color, float[] vertices, uint[] indices, string texturePath, bool isLightSource = false)
+    public SceneObject(string title, Vector3 position, Vector3 scale, Vector3 rotation, Color4 color, float[] vertices, uint[] indices, string diffuseTexturePath, string specularTexturePath, bool isLightSource = false)
     {
-        _objectMaterial = new Material(texturePath);
+        _objectMaterial = new Material(diffuseTexturePath, specularTexturePath);
         _position = Statics.Opentk3ToNumerics3(position);
         _scale = Statics.Opentk3ToNumerics3(scale);
         _rotation = Statics.Opentk3ToNumerics3(rotation);
@@ -248,6 +243,10 @@ public class SceneObject
         
         GL.BindVertexArray(0);
         
+        
+        _objectMaterial.DiffuseTexture.Use(TextureUnit.Texture0);
+        _objectMaterial.SpecularTexture.Use(TextureUnit.Texture1);
+        
         Objects.Add(this);
     }
 
@@ -271,9 +270,8 @@ public class SceneObject
             shader?.SetColor4("objectColor", _objectMaterial.Color4);
             shader?.SetVector3("viewPos", cameraPosition);
             
-            shader?.SetVector3("material.ambient", new Vector3(1.0f, 0.5f, 0.31f));
-            shader?.SetVector3("material.diffuse", new Vector3(1.0f, 0.5f, 0.31f));
-            shader?.SetVector3("material.specular", new Vector3(0.5f, 0.5f, 0.5f));
+            shader?.SetInt("material.diffuse", 0);
+            shader?.SetInt("material.specular", 1);
             shader?.SetFloat("material.shininess", 32.0f);
             
             shader?.SetVector3("light.ambient",  new Vector3(0.2f, 0.2f, 0.2f) * Statics.Numerics4ToVector3(lightSource._color));
@@ -287,7 +285,9 @@ public class SceneObject
         }
         
         _modelMatrix = Matrix4.CreateScale(Statics.Numerics3ToOpentk3(sca)) * 
-                      Matrix4.CreateFromAxisAngle(Vector3.UnitX, rot.X) * Matrix4.CreateFromAxisAngle(Vector3.UnitY, rot.Y) * Matrix4.CreateFromAxisAngle(Vector3.UnitZ, rot.Z) * 
+                      Matrix4.CreateFromAxisAngle(Vector3.UnitX, MathHelper.DegreesToRadians(rot.X)) * 
+                      Matrix4.CreateFromAxisAngle(Vector3.UnitY, MathHelper.DegreesToRadians(rot.Y)) * 
+                      Matrix4.CreateFromAxisAngle(Vector3.UnitZ, MathHelper.DegreesToRadians(rot.Z)) * 
                       Matrix4.CreateTranslation(Statics.Numerics3ToOpentk3(pos));
         
         
@@ -300,8 +300,6 @@ public class SceneObject
         if (_isLightSource)
             Main.LightShader?.Use();
         else Main.Shader?.Use();
-            
-        _objectMaterial.Texture.Use(0);
         GL.UniformMatrix4(GL.GetUniformLocation((int)shaderProgram, "model"), true, ref _modelMatrix);
         GL.BindVertexArray(_vao);
         GL.DrawElements(PrimitiveType.Triangles, _indexCount, DrawElementsType.UnsignedInt, 0);

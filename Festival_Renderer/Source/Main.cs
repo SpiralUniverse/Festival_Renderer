@@ -74,10 +74,9 @@ public static Shader? LightShader;
         GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
         GL.ClearColor(new Color4(0, 32, 48, 255));
         _skyColor = new(0, 0.1254902f, 0.1882353f);
-        _cube = new Primitives.Cube("container.jpg", 0);
-        //var cube2 = new Primitives.Cube("bricks.jpg", 1);
+        _cube = new Primitives.Cube("container2.png","container2_specular.png", 0);
 
-        _light = new Primitives.LightPlane("bricks.jpg", 2, true);
+        _light = new Primitives.LightPlane("container2.jpg", "container2.png", 2, true);
     }
     
     protected override void OnResize(ResizeEventArgs e)

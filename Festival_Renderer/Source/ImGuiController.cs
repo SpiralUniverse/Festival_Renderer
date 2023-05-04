@@ -457,13 +457,13 @@ public class ImGuiController : IDisposable
         return false;
     }
 
-    public static int CreateProgram(string name, string vertexSource, string fragmentSoruce)
+    public static int CreateProgram(string name, string vertexSource, string fragmentSource)
     {
         int program = GL.CreateProgram();
         LabelObject(ObjectLabelIdentifier.Program, program, $"Program: {name}");
 
         int vertex = CompileShader(name, ShaderType.VertexShader, vertexSource);
-        int fragment = CompileShader(name, ShaderType.FragmentShader, fragmentSoruce);
+        int fragment = CompileShader(name, ShaderType.FragmentShader, fragmentSource);
 
         GL.AttachShader(program, vertex);
         GL.AttachShader(program, fragment);
