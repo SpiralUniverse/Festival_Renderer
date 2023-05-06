@@ -66,6 +66,7 @@ public struct Primitives
             
             SceneObject = new SceneObject(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
                 _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
+            SceneObject.name = _title;
         }
     }
     
@@ -95,6 +96,7 @@ public struct Primitives
             
             SceneObject = new SceneObject(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
                 _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
+            SceneObject.name = _title;
         }
     }
 
@@ -127,6 +129,7 @@ public struct Primitives
 
             SceneObject = new SceneObject(_title, Vector3.Zero, Vector3.One, new Vector3(90, 0, 0),
                 new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices, _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
+            SceneObject.name = _title;
         }
     }
     
@@ -159,6 +162,7 @@ public struct Primitives
 
             SceneObject = new SceneObject(_title, new Vector3(0, 1, -2.5f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0, 0, 0),
                 Color4.White, _vertices, _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName, isLightSource);
+            SceneObject.name = _title;
         }
     }
 }
@@ -187,6 +191,8 @@ public class SceneObject
     private readonly float[] _vertices;
     private readonly uint[] _indices;
 
+    public string name = "Unnamed";
+    public bool _isSelected;
 
     private struct Material
     {
@@ -302,7 +308,7 @@ public class SceneObject
         GL.BindVertexArray(_vao);
         GL.DrawElements(PrimitiveType.Triangles, _indexCount, DrawElementsType.UnsignedInt, 0);
         
-        
+        if(!_isSelected) return;
         if (!ImGui.Begin("Object Settings")) return;
         ImGui.Text(_title + "'s Transform");
         ImGui.DragFloat3(_title + "'s Position", ref _position, Statics.DragSensitivity);
@@ -317,10 +323,35 @@ public class SceneObject
         ImGui.End();
     }
     
+    public double? IntersectsRay(Vector3 rayDirection)
+    {
+        var radius = _scale.X;
+        var difference = Position - rayDirection;
+        var differenceLengthSquared = difference.LengthSquared;
+        var sphereRadiusSquared = radius * radius;
+        if (differenceLengthSquared < sphereRadiusSquared)
+        {
+            return 0d;
+        }
+        var distanceAlongRay = Vector3.Dot(rayDirection, difference);
+        if (distanceAlongRay < 0)
+        {
+            return null;
+        }
+        var dist = sphereRadiusSquared + distanceAlongRay * distanceAlongRay - differenceLengthSquared;
+        var result = (dist < 0) ? null : distanceAlongRay - (double?)Math.Sqrt(dist);
+        return result;
+    }
+    
     ~SceneObject()
     {
         GL.DeleteVertexArray(_vao);
         GL.DeleteBuffer(_vbo);
         GL.DeleteBuffer(_ebo);
+    }
+
+    public void SetPosition(Vector3 newPosition)
+    {
+        _position = Statics.Opentk3ToNumerics3(newPosition);
     }
 }

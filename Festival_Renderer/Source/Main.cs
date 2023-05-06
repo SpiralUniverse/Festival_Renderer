@@ -2,6 +2,10 @@
 
 namespace Festival_Renderer.Source;
 
+
+/// <summary>
+/// The Main Window.
+/// </summary>
 internal class Main : GameWindow
 {
     
@@ -38,7 +42,7 @@ private readonly ImGuiController? _guiController;
 private readonly Texture _tex1;
 private readonly Texture _tex2;
 
-private CameraArcball _arcball;
+private readonly CameraArcball _arcball;
 
 private Primitives.LightPlane _light;
 private Primitives.Cube _cube;
@@ -48,6 +52,10 @@ public static Shader? LightShader;
 
 #endregion
     
+/// <summary>
+/// Constructor To fill variables and set Window Settings.
+/// Centers the window.
+/// </summary>
     public Main() : base(new GameWindowSettings {RenderFrequency =  60, UpdateFrequency = 60}, new NativeWindowSettings {Size = new Vector2i(1600, 900), APIVersion = new Version(3, 3), WindowState = WindowState.Normal})
     {
         //_viewportCamera = new Camera(new OpenTK.Mathematics.Vector3(5, 3, -3), ClientSize.X / (ClientSize.Y * 1.0f));
@@ -63,12 +71,18 @@ public static Shader? LightShader;
         CenterWindow();
     }
 
+/// <summary>
+/// OnLoad Event Called Directly when the app start.
+/// Load, Enable, and Initialize important attributes and functionalities and variables.
+/// </summary>
     protected override void OnLoad()
     {
         base.OnLoad();
         
         Title = "LUCSC Festival Simple Renderer " + GL.GetString(StringName.Version);
         _imGuiShaderProgramHandler = ImGuiController._shader;
+        
+        
         
         GL.Enable(EnableCap.Blend); 
         GL.Enable(EnableCap.DepthTest);
@@ -78,10 +92,20 @@ public static Shader? LightShader;
         GL.ClearColor(new Color4(0, 32, 48, 255));
         _skyColor = new(0, 0.1254902f, 0.1882353f);
         _cube = new Primitives.Cube("container2.png","container2_specular.png", 0);
+        _cube.SceneObject.SetPosition(Vector3.One);
 
+        var cube2 = new Primitives.Cube("bricks.jpg", "container.jpg", 1);
+        cube2.SceneObject.SetPosition(-Vector3.One);
         _light = new Primitives.LightPlane("bricks.jpg", "container.jpg", 2, true);
+        WindowState = WindowState.Maximized;
+        SelectSceneObject(cube2.SceneObject);
     }
     
+/// <summary>
+/// OnResize Event called when app window is resized.
+/// Resize both viewport and UI interface to match new window Size.
+/// </summary>
+/// <param name="e">Resize event arguments.</param>
     protected override void OnResize(ResizeEventArgs e)
     {
         if (_isPaused) return;
@@ -92,6 +116,11 @@ public static Shader? LightShader;
         
     }
     
+/// <summary>
+/// OnTextInput event called when use try to input text.
+/// Used for UI.
+/// </summary>
+/// <param name="e">Text input event arguments.</param>
     protected override void OnTextInput(TextInputEventArgs e)
     {
         base.OnTextInput(e);
@@ -99,6 +128,12 @@ public static Shader? LightShader;
         
     }
 
+/// <summary>
+/// OnRenderFrame Event Called every Rendering Frame.
+/// Updates screen colors data and call all methods related to drawing on screen.
+/// Calculates Rendering frames/seconds.
+/// </summary>
+/// <param name="args">Frame event arguments.</param>
     protected override void OnRenderFrame(FrameEventArgs args)
     {
         base.OnRenderFrame(args);
@@ -106,7 +141,7 @@ public static Shader? LightShader;
         
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
         
-        UpdateMatrices();
+        SendMatricesData();
         Draw();
         
         GL.UseProgram(_imGuiShaderProgramHandler);
@@ -130,7 +165,15 @@ public static Shader? LightShader;
         
     }
 
-    private Vector2 LastMousePos;
+    private Vector2 LastMousePos; //todo: move to correct position in code
+    
+    
+    /// <summary>
+    /// OnUpdateFrame Event Called on every LOGIC Frame.
+    /// Used for app logic and input handling.
+    /// Calculates camera orbit angles.
+    /// </summary>
+    /// <param name="args">Frame event arguments</param>
     protected override void OnUpdateFrame(FrameEventArgs args)
     {
         if (KeyboardState.IsKeyPressed(Keys.Escape))
@@ -191,16 +234,14 @@ public static Shader? LightShader;
         // Step 1: Calculate the amount of rotation given the mouse movement
         float deltaAngleX = (float)(2 * Math.PI / ClientSize.X); // a movement from left to right = 2 * PI = 360 deg
         float deltaAngleY = (float)(Math.PI / ClientSize.Y); // a movement from top to bottom = PI = 180 deg
-        float xAngle = (LastMousePos.X - MouseState.X) * deltaAngleX;
-        float yAngle = (LastMousePos.Y - MouseState.Y) * deltaAngleY;
+        float xAngle = (MouseState.X - LastMousePos.X) * deltaAngleX;
+        float yAngle = (MouseState.Y - LastMousePos.Y) * deltaAngleY;
 
-        xAngle = -xAngle;
-        yAngle = -yAngle;//TODO: flip them in implementation
         
         // Extra step to handle the problem when the camera direction is the same as the up vector
         float cosAngle = Vector3.Dot(_arcball.ViewDirection, _arcball.UpVector);
         if (cosAngle * Math.Sign(yAngle) > 0.99f)
-            yAngle = 0;
+            yAngle = 0; //todo: fix rotatio top view
         
         // Step 2: Rotate the camera around the pivot point on the first axis
         Matrix4 rotationMatrixX = Matrix4.CreateFromAxisAngle(_arcball.UpVector, xAngle);
@@ -219,8 +260,105 @@ public static Shader? LightShader;
 
         base.OnUpdateFrame(args);
     }
-    
-    private void UpdateMatrices()
+
+    protected override void OnFocusedChanged(FocusedChangedEventArgs e)
+    {
+        base.OnFocusedChanged(e);
+    }
+
+    /// <summary>
+    /// OnMouseUp event called when mouse button is released.
+    /// Used to help in Object Selection.
+    /// </summary>
+    /// <param name="e">Mouse button event arguments</param>
+    protected override void OnMouseUp(MouseButtonEventArgs e)
+    {
+        if(e.Button != MouseButton.Left) return;
+        PickObjectOnScreen((int)MousePosition.Y, (int)MousePosition.Y);
+        //TODO: unify the usage of accessing mouse position!
+    }
+
+    /// <summary>
+    /// Picks an Object based on mouse position. 
+    /// </summary>
+    /// <param name="mouseX">mouse position on x-axis (Screen Width).</param>
+    /// <param name="mouseY">mouse position on y-axis (Screen Height).</param>
+    private void PickObjectOnScreen(int mouseX, int mouseY)
+    {
+        // heavily influenced by: http://antongerdelan.net/opengl/raycasting.html
+        // viewport coordinate system
+        // normalized device coordinates
+        var x = (2f * mouseX) / ClientSize.X - 1f;
+        var y = 1f - (2f * mouseY) / ClientSize.Y;
+        var z = 1f;
+        var rayNormalizedDeviceCoordinates = new Vector3(x, y, z);
+
+        // 4D homogeneous clip coordinates
+        var rayClip = new Vector4(rayNormalizedDeviceCoordinates.X, rayNormalizedDeviceCoordinates.Y, -1f, 1f);
+
+        // 4D eye (camera) coordinates
+        var rayEye = _arcball.ProjectionMatrix.Inverted() * rayClip;
+        rayEye = new Vector4(rayEye.X, rayEye.Y, -1f, 0f);
+
+        // 4D world coordinates
+        var rayWorldCoordinates = (_arcball.ViewMatrix.Inverted() * rayEye).Xyz;
+        rayWorldCoordinates.Normalize();
+        FindClosestSceneObjectHitByRay(rayWorldCoordinates);
+    }
+
+    /// <summary>
+    /// Helps in Object Selection.
+    /// Finds The Best Candidate.
+    /// </summary>
+    /// <param name="rayWorldCoordinates"></param>
+    private void FindClosestSceneObjectHitByRay(Vector3 rayWorldCoordinates)
+    {
+        SceneObject bestCandidate = null;
+        double? bestDistance = null;
+        foreach (var gameObject in SceneObject.Objects)
+        {
+            var candidateDistance = gameObject.IntersectsRay(rayWorldCoordinates);
+            if (!candidateDistance.HasValue)
+                continue;
+            if (!bestDistance.HasValue)
+            {
+                bestDistance = candidateDistance;
+                bestCandidate = gameObject;
+                continue;
+            }
+            if (candidateDistance < bestDistance)
+            {
+                bestDistance = candidateDistance;
+                bestCandidate = gameObject;
+            }
+        }
+        if (bestCandidate != null)
+        {
+            switch (bestCandidate)
+            {
+                case SceneObject sceneObject:
+                    Console.WriteLine($"Selected {sceneObject.name} positioned at {sceneObject.Position}.");
+                    SelectSceneObject(sceneObject);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Select an Object.
+    /// </summary>
+    /// <param name="sceneObject"></param>
+    private void SelectSceneObject(SceneObject sceneObject)
+    {
+        _arcball.SetCameraView(_arcball.Eye, sceneObject.Position, _arcball.UpVector);
+        sceneObject._isSelected = true;
+        //TODO: finish implementation.
+    }
+
+    /// <summary>
+    /// Sends matrices data to the GPU shader program based on their uniform names. 
+    /// </summary>
+    private void SendMatricesData()
     {
         
         LightShader?.SetMatrix4("view", _arcball.ViewMatrix);
@@ -231,6 +369,10 @@ public static Shader? LightShader;
 
     }
     
+    /// <summary>
+    /// Draws all Objects and Update UI.
+    /// TODO: Place all UI Updates in another method.
+    /// </summary>
     private void Draw()
     {
         foreach (var o in SceneObject.Objects)
