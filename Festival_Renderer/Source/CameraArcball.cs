@@ -90,4 +90,9 @@ public class CameraArcball
     {
         _upVector = newVector;
     }
+
+    public void SetLookAt(Vector3 cameraLookAt)
+    {
+        _lookAt = cameraLookAt;
+    }
 }

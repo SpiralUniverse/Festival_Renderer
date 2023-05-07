@@ -24,7 +24,6 @@ private double _elapsedTime;
 private bool _depthTest;
 private bool _alphaBlend;
 private bool _cullFace;
-private bool _isDragging; //TODO: use this for orbiting.
 public static readonly Vector3[] PointLightPositions =
 {
     new Vector3(0.7f, 0.2f, 2.0f),
@@ -202,14 +201,23 @@ public static Shader? LightShader;
             _camera.SetCameraView(position.Xyz, _camera.LookAt, _camera.UpVector);
         }
 
+        if (KeyboardState.IsKeyDown(Keys.LeftShift))
+        {
+            _cameraOffset = _camera.RightVector * (MouseState.X - LastMousePos.X) + _camera.UpVector * (LastMousePos.Y - MouseState.Y);
+            _cameraOffset *= 0.1f;
+            _camera.SetLookAt(_camera.LookAt + _cameraOffset);
+            _camera.SetCameraView(position.Xyz + _cameraOffset, _camera.LookAt, _camera.UpVector); 
+        }
+        
         LastMousePos.X = MouseState.X;
         LastMousePos.Y = MouseState.Y;
-        
-        //TODO: added camera Panning and focus.
+
+        //TODO: add focus button.
 
         base.OnUpdateFrame(args);
     }
 
+    private Vector3 _cameraOffset;
     /// <summary>
     /// OnMouseUp event called when mouse button is released.
     /// Used to help in Object Selection.
