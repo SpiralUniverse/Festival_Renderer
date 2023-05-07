@@ -85,4 +85,9 @@ public class CameraArcball
         _projectionMatrix = Matrix4.CreatePerspectiveFieldOfView(MathHelper.PiOver2, _aspectRatio, 0.01f, 100f);
         //TODO: change clip space during runtime
     }
+
+    public void SetUpVector(Vector3 newVector)
+    {
+        _upVector = newVector;
+    }
 }

@@ -1,3 +1,5 @@
+using Vector4 = System.Numerics.Vector4;
+
 namespace Festival_Renderer.Source;
 
 public struct Primitives
@@ -8,7 +10,7 @@ public struct Primitives
         private readonly string _title;
         private readonly float[] _vertices;
         private readonly uint[] _indices;
-        public SceneObject SceneObject;
+        public readonly Mesh Mesh;
 
         public Cube(string diffuseTextureName, string specularTextureName, uint id)
         {
@@ -64,9 +66,9 @@ public struct Primitives
                 20, 21, 22, 20, 22, 23 // Bottom face
             };
             
-            SceneObject = new SceneObject(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
+            Mesh = new Mesh(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
                 _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
-            SceneObject.name = _title;
+            Mesh.Name = _title;
         }
     }
     
@@ -76,7 +78,7 @@ public struct Primitives
         private readonly string _title;
         private readonly float[] _vertices;
         private readonly uint[] _indices;
-        public SceneObject SceneObject;
+        public Mesh Mesh;
 
         public Triangle(string diffuseTextureName, string specularTextureName, uint id)
         {
@@ -94,9 +96,9 @@ public struct Primitives
                 0, 1, 2
             };
             
-            SceneObject = new SceneObject(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
+            Mesh = new Mesh(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
                 _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
-            SceneObject.name = _title;
+            Mesh.Name = _title;
         }
     }
 
@@ -106,7 +108,7 @@ public struct Primitives
         private readonly string _title;
         private readonly float[] _vertices;
         private readonly uint[] _indices;
-        public SceneObject SceneObject;
+        public Mesh Mesh;
 
         public Plane(string diffuseTextureName, string specularTextureName, uint id)
         {
@@ -127,9 +129,9 @@ public struct Primitives
                 0, 2, 3
             };
 
-            SceneObject = new SceneObject(_title, Vector3.Zero, Vector3.One, new Vector3(90, 0, 0),
+            Mesh = new Mesh(_title, Vector3.Zero, Vector3.One, new Vector3(90, 0, 0),
                 new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices, _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
-            SceneObject.name = _title;
+            Mesh.Name = _title;
         }
     }
     
@@ -139,7 +141,7 @@ public struct Primitives
         private readonly string _title;
         private readonly float[] _vertices;
         private readonly uint[] _indices;
-        public readonly SceneObject SceneObject;
+        public readonly Mesh Mesh;
 
         public LightPlane(string diffuseTextureName, string specularTextureName, uint id, bool isLightSource)
         {
@@ -160,16 +162,16 @@ public struct Primitives
                 0, 2, 3
             };
 
-            SceneObject = new SceneObject(_title, new Vector3(0, 1, -2.5f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0, 0, 0),
+            Mesh = new Mesh(_title, new Vector3(0, 1, -2.5f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0, 0, 0),
                 Color4.White, _vertices, _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName, isLightSource);
-            SceneObject.name = _title;
+            Mesh.Name = _title;
         }
     }
 }
 
-public class SceneObject
+public class Mesh
 {
-    public static readonly List<SceneObject> Objects = new List<SceneObject>();
+    public static readonly List<Mesh> Meshes = new();
     public Vector3 Position => Statics.Numerics3ToOpentk3(_position);
     
     private Matrix4 _modelMatrix;
@@ -191,7 +193,7 @@ public class SceneObject
     private readonly float[] _vertices;
     private readonly uint[] _indices;
 
-    public string name = "Unnamed";
+    public string Name = "Unnamed";
     public bool _isSelected;
 
     private struct Material
@@ -211,7 +213,7 @@ public class SceneObject
         
     }
 
-    public SceneObject(string title, Vector3 position, Vector3 scale, Vector3 rotation, Color4 color, float[] vertices, uint[] indices, string diffuseTexturePath, string specularTexturePath, bool isLightSource = false)
+    public Mesh(string title, Vector3 position, Vector3 scale, Vector3 rotation, Color4 color, float[] vertices, uint[] indices, string diffuseTexturePath, string specularTexturePath, bool isLightSource = false)
     {
         _objectMaterial = new Material(diffuseTexturePath, specularTexturePath);
         _position = Statics.Opentk3ToNumerics3(position);
@@ -249,10 +251,10 @@ public class SceneObject
         
         
         
-        Objects.Add(this);
+        Meshes.Add(this);
     }
 
-    public void UpdateObjectData(SceneObject lightSource, Vector3 cameraPosition)
+    public void UpdateObjectData(/*Object lightSource, */Vector3 cameraPosition)
     {
         var sca = _scale;
         var rot = _rotation;
@@ -269,7 +271,6 @@ public class SceneObject
         shader?.Use();
         if (!_isLightSource)
         {
-            shader?.SetColor4("objectColor", _objectMaterial.Color4);
             shader?.SetVector3("viewPos", cameraPosition);
             
             _objectMaterial.DiffuseTexture.Use(TextureUnit.Texture0);
@@ -278,14 +279,25 @@ public class SceneObject
             shader?.SetInt("material.specular", 1);
             shader?.SetFloat("material.shininess", 32.0f);
             
-            shader?.SetVector3("light.ambient",  new Vector3(0.2f, 0.2f, 0.2f) * Statics.Numerics4ToVector3(lightSource._color));
-            shader?.SetVector3("light.diffuse",  new Vector3(0.5f, 0.5f, 0.5f) * Statics.Numerics4ToVector3(lightSource._color)); // darken the light a bit to fit the scene
-            shader?.SetVector3("light.specular", new Vector3(1.0f, 1.0f, 1.0f) * Statics.Numerics4ToVector3(lightSource._color));
-            shader?.SetVector3("light.position", Statics.Numerics3ToOpentk3(lightSource._position));
+            shader?.SetVector3("dirLight.direction", new Vector3(-0.2f, -1.0f, -0.3f));
+            shader?.SetVector3("dirLight.ambient", new Vector3(0.05f, 0.05f, 0.05f));
+            shader?.SetVector3("dirLight.diffuse", new Vector3(0.4f, 0.4f, 0.4f));
+            shader?.SetVector3("dirLight.specular", new Vector3(0.5f, 0.5f, 0.5f));
+
+            for (int i = 0; i < Main.PointLightPositions.Length; i++)
+            {
+                shader?.SetVector3($"pointLights[{i}].position", Main.PointLightPositions[i]);
+                shader?.SetVector3($"pointLights[{i}].ambient", new Vector3(0.05f, 0.05f, 0.05f));
+                shader?.SetVector3($"pointLights[{i}].diffuse", new Vector3(0.8f, 0.8f, 0.8f));
+                shader?.SetVector3($"pointLights[{i}].specular", new Vector3(1.0f, 1.0f, 1.0f));
+                shader?.SetFloat($"pointLights[{i}].constant", 1.0f);
+                shader?.SetFloat($"pointLights[{i}].linear", 0.09f);
+                shader?.SetFloat($"pointLights[{i}].quadratic", 0.032f);
+            }
         }
         else
         {
-            shader?.SetColor4("lightColor", Statics.Numerics4ToColor4(lightSource._color));
+            shader?.SetColor4("lightColor", Statics.Numerics4ToColor4(Vector4.One));
         }
         
         _modelMatrix = Matrix4.CreateScale(Statics.Numerics3ToOpentk3(sca)) * 
@@ -308,7 +320,9 @@ public class SceneObject
         GL.BindVertexArray(_vao);
         GL.DrawElements(PrimitiveType.Triangles, _indexCount, DrawElementsType.UnsignedInt, 0);
         
+        
         if(!_isSelected) return;
+        
         if (!ImGui.Begin("Object Settings")) return;
         ImGui.Text(_title + "'s Transform");
         ImGui.DragFloat3(_title + "'s Position", ref _position, Statics.DragSensitivity);
@@ -343,7 +357,7 @@ public class SceneObject
         return result;
     }
     
-    ~SceneObject()
+    ~Mesh()
     {
         GL.DeleteVertexArray(_vao);
         GL.DeleteBuffer(_vbo);

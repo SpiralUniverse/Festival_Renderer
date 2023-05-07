@@ -24,27 +24,25 @@ private double _elapsedTime;
 private bool _depthTest;
 private bool _alphaBlend;
 private bool _cullFace;
-private bool _firstMove;
-private bool _isPaused;
-
-private Vector2 _lastMousePos;
+private bool _isDragging; //TODO: use this for orbiting.
+public static readonly Vector3[] PointLightPositions =
+{
+    new Vector3(0.7f, 0.2f, 2.0f),
+    new Vector3(2.3f, -3.3f, -4.0f),
+    new Vector3(-4.0f, 2.0f, -12.0f),
+    new Vector3(0.0f, 0.0f, -3.0f)
+};
 
 private System.Numerics.Vector3 _skyColor;
 
-#region --Vars mouse--
-
-private Vector3 _prevMousePos = Vector3.Zero;
-private bool _isDragging;
-#endregion
 
 private readonly ImGuiController? _guiController;
-//private readonly Camera _viewportCamera;
 private readonly Texture _tex1;
 private readonly Texture _tex2;
 
-private readonly CameraArcball _arcball;
+private readonly CameraArcball _camera;
 
-private Primitives.LightPlane _light;
+//private Primitives.LightPlane _light;
 private Primitives.Cube _cube;
 
 public static Shader? Shader;
@@ -59,13 +57,12 @@ public static Shader? LightShader;
     public Main() : base(new GameWindowSettings {RenderFrequency =  60, UpdateFrequency = 60}, new NativeWindowSettings {Size = new Vector2i(1600, 900), APIVersion = new Version(3, 3), WindowState = WindowState.Normal})
     {
         //_viewportCamera = new Camera(new OpenTK.Mathematics.Vector3(5, 3, -3), ClientSize.X / (ClientSize.Y * 1.0f));
-        _arcball = new CameraArcball(new Vector3(5, 3, -3), Vector3.Zero, Vector3.UnitY, ClientSize.X / (ClientSize.Y * 1.0f));
+        _camera = new CameraArcball(new Vector3(5, 3, -3), Vector3.Zero, Vector3.UnitY, ClientSize.X / (ClientSize.Y * 1.0f));
         Shader = new Shader("Resources\\shader vert.glsl", "Resources\\shader frag.glsl");
         LightShader = new Shader("Resources\\shader lamp vert.glsl", "Resources\\shader lamp frag.glsl");
         _guiController = new ImGuiController(ClientSize.X, ClientSize.Y);
         _depthTest = true;
         _cullFace = true;
-        _firstMove = true;
         _tex1 = Texture.LoadFromFile("Resources//bricks.jpg");
         _tex2 = Texture.LoadFromFile("Resources//container.jpg");
         CenterWindow();
@@ -91,14 +88,19 @@ public static Shader? LightShader;
         GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
         GL.ClearColor(new Color4(0, 32, 48, 255));
         _skyColor = new(0, 0.1254902f, 0.1882353f);
-        _cube = new Primitives.Cube("container2.png","container2_specular.png", 0);
-        _cube.SceneObject.SetPosition(Vector3.One);
+        //_cube = new Primitives.Cube("container2.png","container2_specular.png", 0);
+        //_cube.Mesh.SetPosition(Vector3.One);
 
-        var cube2 = new Primitives.Cube("bricks.jpg", "container.jpg", 1);
-        cube2.SceneObject.SetPosition(-Vector3.One);
-        _light = new Primitives.LightPlane("bricks.jpg", "container.jpg", 2, true);
-        WindowState = WindowState.Maximized;
-        SelectSceneObject(cube2.SceneObject);
+        //var cube2 = new Primitives.Cube("container2.png", "container2_specular.png", 1);
+        //cube2.Mesh.SetPosition(-Vector3.One);
+        uint lightId = 2;
+        foreach (Vector3 position in PointLightPositions)
+        {
+            var light = new Primitives.LightPlane("bricks.jpg", "bricks.jpg", lightId++, true);
+            light.Mesh.SetPosition(position);
+        }
+        //WindowState = WindowState.Maximized;
+        //SelectSceneObject(cube2.Mesh);
     }
     
 /// <summary>
@@ -108,7 +110,6 @@ public static Shader? LightShader;
 /// <param name="e">Resize event arguments.</param>
     protected override void OnResize(ResizeEventArgs e)
     {
-        if (_isPaused) return;
         base.OnResize(e);
         
         GL.Viewport(0, 0, ClientSize.X, ClientSize.Y);
@@ -176,94 +177,37 @@ public static Shader? LightShader;
     /// <param name="args">Frame event arguments</param>
     protected override void OnUpdateFrame(FrameEventArgs args)
     {
-        if (KeyboardState.IsKeyPressed(Keys.Escape))
-        {
-            _isPaused = !_isPaused;
-        }
+        if (KeyboardState.IsKeyPressed(Keys.Escape)) Close();
         
-        if(KeyboardState.IsKeyDown(Keys.F4)) Close();
-        if(_isPaused) return;
 
-        /*if (KeyboardState.IsKeyDown(Keys.W))
-        {
-            _viewportCamera.Position += _viewportCamera.Front * Statics.CameraSpeed * (float)args.Time; // Forward
-        }
+        Vector4 position = new Vector4(_camera.Eye.X, _camera.Eye.Y, _camera.Eye.Z, 1);
+        Vector4 pivot = new Vector4(_camera.LookAt.X, _camera.LookAt.Y, _camera.LookAt.Z, 1);
 
-        if (KeyboardState.IsKeyDown(Keys.S))
-        {
-            _viewportCamera.Position -= _viewportCamera.Front * Statics.CameraSpeed * (float)args.Time; // Backwards
-        }
-        if (KeyboardState.IsKeyDown(Keys.A))
-        {
-            _viewportCamera.Position -= _viewportCamera.Right * Statics.CameraSpeed * (float)args.Time; // Left
-        }
-        if (KeyboardState.IsKeyDown(Keys.D))
-        {
-            _viewportCamera.Position += _viewportCamera.Right * Statics.CameraSpeed * (float)args.Time; // Right
-        }
-        if (KeyboardState.IsKeyDown(Keys.Space))
-        {
-            _viewportCamera.Position += _viewportCamera.Up * Statics.CameraSpeed * (float)args.Time; // Up
-        }
-        if (KeyboardState.IsKeyDown(Keys.LeftShift))
-        {
-            _viewportCamera.Position -= _viewportCamera.Up * Statics.CameraSpeed * (float)args.Time; //Bottom
-        }
-        
-        if (_firstMove) 
-        {
-            _lastMousePos = new Vector2(MouseState.X, MouseState.Y);
-            _firstMove = false;
-        }
-        else
-        {
-            var deltaX = MouseState.X - _lastMousePos.X;
-            var deltaY = MouseState.Y - _lastMousePos.Y;
-            _lastMousePos = new Vector2(MouseState.X, MouseState.Y);
-
-            
-            _viewportCamera.Yaw += deltaX * Statics.Sensitivity;
-            _viewportCamera.Pitch -= deltaY * Statics.Sensitivity;
-        }*/
-        
-        
-        // Get the homogeneous position of the camera and pivot point
-        Vector4 position = new Vector4(_arcball.Eye.X, _arcball.Eye.Y, _arcball.Eye.Z, 1);
-        Vector4 pivot = new Vector4(_arcball.LookAt.X, _arcball.LookAt.Y, _arcball.LookAt.Z, 1);
-
-        // Step 1: Calculate the amount of rotation given the mouse movement
-        float deltaAngleX = (float)(2 * Math.PI / ClientSize.X); // a movement from left to right = 2 * PI = 360 deg
-        float deltaAngleY = (float)(Math.PI / ClientSize.Y); // a movement from top to bottom = PI = 180 deg
+        float deltaAngleX = (float)(2 * Math.PI / ClientSize.X);
+        float deltaAngleY = (float)(Math.PI / ClientSize.Y);
         float xAngle = (MouseState.X - LastMousePos.X) * deltaAngleX;
         float yAngle = (MouseState.Y - LastMousePos.Y) * deltaAngleY;
 
+        Quaternion xRotation = Quaternion.FromAxisAngle(_camera.UpVector, xAngle);
+        Quaternion yRotation = Quaternion.FromAxisAngle(_camera.RightVector, yAngle);
         
-        // Extra step to handle the problem when the camera direction is the same as the up vector
-        float cosAngle = Vector3.Dot(_arcball.ViewDirection, _arcball.UpVector);
-        if (cosAngle * Math.Sign(yAngle) > 0.99f)
-            yAngle = 0; //todo: fix rotatio top view
+        Quaternion rotation = yRotation * xRotation;
         
-        // Step 2: Rotate the camera around the pivot point on the first axis
-        Matrix4 rotationMatrixX = Matrix4.CreateFromAxisAngle(_arcball.UpVector, xAngle);
-        position = (rotationMatrixX * (position - pivot)) + pivot;
+        if (KeyboardState.IsKeyDown(Keys.LeftControl))
+        {
+            
+            position = Vector4.Transform(position - pivot, rotation) + pivot;
+            _camera.SetUpVector(Vector3.Transform(_camera.UpVector, rotation));
+            
+            _camera.SetCameraView(position.Xyz, _camera.LookAt, _camera.UpVector);
+        }
 
-        // Step 3: Rotate the camera around the pivot point on the second axis
-        Matrix4 rotationMatrixY = Matrix4.CreateFromAxisAngle(_arcball.RightVector, yAngle);
-        Vector4 finalPosition = (rotationMatrixY * (position - pivot)) + pivot;
-
-        // Update the camera view (we keep the same lookat and the same up vector)
-        _arcball.SetCameraView(finalPosition.Xyz, _arcball.LookAt, _arcball.UpVector);
-
-        // Update the mouse position for the next rotation
         LastMousePos.X = MouseState.X;
         LastMousePos.Y = MouseState.Y;
+        
+        //TODO: added camera Panning and focus.
 
         base.OnUpdateFrame(args);
-    }
-
-    protected override void OnFocusedChanged(FocusedChangedEventArgs e)
-    {
-        base.OnFocusedChanged(e);
     }
 
     /// <summary>
@@ -297,11 +241,11 @@ public static Shader? LightShader;
         var rayClip = new Vector4(rayNormalizedDeviceCoordinates.X, rayNormalizedDeviceCoordinates.Y, -1f, 1f);
 
         // 4D eye (camera) coordinates
-        var rayEye = _arcball.ProjectionMatrix.Inverted() * rayClip;
+        var rayEye = _camera.ProjectionMatrix.Inverted() * rayClip;
         rayEye = new Vector4(rayEye.X, rayEye.Y, -1f, 0f);
 
         // 4D world coordinates
-        var rayWorldCoordinates = (_arcball.ViewMatrix.Inverted() * rayEye).Xyz;
+        var rayWorldCoordinates = (_camera.ViewMatrix.Inverted() * rayEye).Xyz;
         rayWorldCoordinates.Normalize();
         FindClosestSceneObjectHitByRay(rayWorldCoordinates);
     }
@@ -309,13 +253,14 @@ public static Shader? LightShader;
     /// <summary>
     /// Helps in Object Selection.
     /// Finds The Best Candidate.
+    /// Based on this blog post https://dreamstatecoding.blogspot.com/2018/03/opengl-4-with-opentk-in-c-part-15.html.
     /// </summary>
     /// <param name="rayWorldCoordinates"></param>
     private void FindClosestSceneObjectHitByRay(Vector3 rayWorldCoordinates)
     {
-        SceneObject bestCandidate = null;
+        Mesh bestCandidate = null;
         double? bestDistance = null;
-        foreach (var gameObject in SceneObject.Objects)
+        foreach (var gameObject in Mesh.Meshes)
         {
             var candidateDistance = gameObject.IntersectsRay(rayWorldCoordinates);
             if (!candidateDistance.HasValue)
@@ -336,8 +281,8 @@ public static Shader? LightShader;
         {
             switch (bestCandidate)
             {
-                case SceneObject sceneObject:
-                    Console.WriteLine($"Selected {sceneObject.name} positioned at {sceneObject.Position}.");
+                case Mesh sceneObject:
+                    Console.WriteLine($"Selected {sceneObject.Name} positioned at {sceneObject.Position}.");
                     SelectSceneObject(sceneObject);
                     break;
             }
@@ -347,11 +292,11 @@ public static Shader? LightShader;
     /// <summary>
     /// Select an Object.
     /// </summary>
-    /// <param name="sceneObject"></param>
-    private void SelectSceneObject(SceneObject sceneObject)
+    /// <param name="mesh"></param>
+    private void SelectSceneObject(Mesh mesh)
     {
-        _arcball.SetCameraView(_arcball.Eye, sceneObject.Position, _arcball.UpVector);
-        sceneObject._isSelected = true;
+        _camera.SetCameraView(_camera.Eye, mesh.Position, _camera.UpVector);
+        mesh._isSelected = true;
         //TODO: finish implementation.
     }
 
@@ -361,11 +306,11 @@ public static Shader? LightShader;
     private void SendMatricesData()
     {
         
-        LightShader?.SetMatrix4("view", _arcball.ViewMatrix);
-        LightShader?.SetMatrix4("proj", _arcball.ProjectionMatrix);
+        LightShader?.SetMatrix4("view", _camera.ViewMatrix);
+        LightShader?.SetMatrix4("proj", _camera.ProjectionMatrix);
         
-        Shader?.SetMatrix4("view", _arcball.ViewMatrix);
-        Shader?.SetMatrix4("proj", _arcball.ProjectionMatrix);
+        Shader?.SetMatrix4("view", _camera.ViewMatrix);
+        Shader?.SetMatrix4("proj", _camera.ProjectionMatrix);
 
     }
     
@@ -375,9 +320,9 @@ public static Shader? LightShader;
     /// </summary>
     private void Draw()
     {
-        foreach (var o in SceneObject.Objects)
+        foreach (var o in Mesh.Meshes)
         {
-            o.UpdateObjectData(_light.SceneObject, _arcball.Eye);
+            o.UpdateObjectData(/*_light.Object, */_camera.Eye);
             o.Draw();
         }
 
@@ -427,6 +372,16 @@ public static Shader? LightShader;
             GL.Enable(EnableCap.CullFace);
         else
             GL.Disable(EnableCap.CullFace);
+        fbxPath = @"C:\Users\Khalid\Documents\Cube.fbx";
+        ImGui.InputText("FBX Path", ref fbxPath, 256);
+        if (ImGui.Button("Load FBX File"))
+        {
+            if(String.IsNullOrWhiteSpace(fbxPath) && !File.Exists(fbxPath))
+                Console.WriteLine("path is empty");
+            else
+                Statics.LoadFBXFile(fbxPath);
+        }
         ImGui.End();
     }
+        string fbxPath = String.Empty;
 }
