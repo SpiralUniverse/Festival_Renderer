@@ -24,38 +24,43 @@ public static class Statics
         
         AssimpContext importer = new AssimpContext();
         Scene scene = importer.ImportFile(fbxPath, PostProcessSteps.Triangulate | PostProcessSteps.GenerateSmoothNormals | PostProcessSteps.FlipUVs);
-        float[] vertices = new float[scene.Meshes[0].VertexCount * 8];
-        uint[] indices = new uint[scene.Meshes[0].FaceCount * 3];
-        
-        
 
-        for (int i = 0; i < scene.Meshes[0].VertexCount; i++)
+
+
+        for (int j = 0; j < scene.Meshes.Count; j++)
         {
-            vertices[i * 8 + 0] = scene.Meshes[0].Vertices[i].X;
-            vertices[i * 8 + 1] = scene.Meshes[0].Vertices[i].Y;
-            vertices[i * 8 + 2] = scene.Meshes[0].Vertices[i].Z;
+            
+            float[] vertices = new float[scene.Meshes[j].VertexCount * 8];
+            uint[] indices = new uint[scene.Meshes[j].FaceCount * 3];
+            
+            for (int i = 0; i < scene.Meshes[j].VertexCount; i++)
+            {
+                vertices[i * 8 + 0] = scene.Meshes[j].Vertices[i].X;
+                vertices[i * 8 + 1] = scene.Meshes[j].Vertices[i].Y;
+                vertices[i * 8 + 2] = scene.Meshes[j].Vertices[i].Z;
 
-            vertices[i * 8 + 3] = scene.Meshes[0].TextureCoordinateChannels[0][i].X / 500;
-            vertices[i * 8 + 4] = scene.Meshes[0].TextureCoordinateChannels[0][i].Y / 500;
+                vertices[i * 8 + 3] = scene.Meshes[j].TextureCoordinateChannels[0][i].X;
+                vertices[i * 8 + 4] = scene.Meshes[j].TextureCoordinateChannels[0][i].Y;
 
-            vertices[i * 8 + 5] = scene.Meshes[0].Normals[i].X;
-            vertices[i * 8 + 6] = scene.Meshes[0].Normals[i].Y;
-            vertices[i * 8 + 7] = scene.Meshes[0].Normals[i].Z;
+                vertices[i * 8 + 5] = scene.Meshes[j].Normals[i].X;
+                vertices[i * 8 + 6] = scene.Meshes[j].Normals[i].Y;
+                vertices[i * 8 + 7] = scene.Meshes[j].Normals[i].Z;
+            }
+
+            for (int i = 0; i < scene.Meshes[j].FaceCount; i++)
+            {
+                indices[i * 3 + 0] = (uint)scene.Meshes[j].Faces[i].Indices[0];
+                indices[i * 3 + 1] = (uint)scene.Meshes[j].Faces[i].Indices[1];
+                indices[i * 3 + 2] = (uint)scene.Meshes[j].Faces[i].Indices[2];
+            }
+
+            Vector3 position = new Vector3(0, 0, 0);
+            Vector3 scale = new Vector3(1, 1, 1); 
+            Vector3 rotation = new Vector3(0, 0, 0);
+            Color4 color = new Color4(1, 1, 1, 1);
+
+            Mesh mesh = new Mesh("FBX Mesh " + j, position, scale, rotation, color, vertices, indices, "Resources//container2.png", "Resources//container2_specular.png");
         }
-
-        for (int i = 0; i < scene.Meshes[0].FaceCount; i++)
-        {
-            indices[i * 3 + 0] = (uint)scene.Meshes[0].Faces[i].Indices[0];
-            indices[i * 3 + 1] = (uint)scene.Meshes[0].Faces[i].Indices[1];
-            indices[i * 3 + 2] = (uint)scene.Meshes[0].Faces[i].Indices[2];
-        }
-
-        Vector3 position = new Vector3(0, 0, 0); // Set the position vector
-        Vector3 scale = new Vector3(1, 1, 1); // Set the scale vector
-        Vector3 rotation = new Vector3(0, 0, 0); // Set the rotation vector
-        Color4 color = new Color4(1, 1, 1, 1); // Set the color
-
-        Mesh mesh = new Mesh("FBX Mesh", position, scale, rotation, color, vertices, indices, "Resources//container2.png", "Resources//container2_specular.png");
 
     }
 }
