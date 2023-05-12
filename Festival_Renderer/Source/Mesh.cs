@@ -12,7 +12,7 @@ public struct Primitives
         private readonly uint[] _indices;
         public readonly Mesh Mesh;
 
-        public Cube(string diffuseTextureName, string specularTextureName, uint id)
+        public Cube(string diffuseTextureName, string specularTextureName, uint id, bool isUsingTexture = true)
         {
             _id = id;
             _title = "Cube " + _id;
@@ -67,8 +67,7 @@ public struct Primitives
             };
             
             Mesh = new Mesh(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
-                _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
-            Mesh.Name = _title;
+                _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName, isUsingTexture: isUsingTexture);
         }
     }
     
@@ -98,7 +97,6 @@ public struct Primitives
             
             Mesh = new Mesh(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
                 _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
-            Mesh.Name = _title;
         }
     }
 
@@ -131,7 +129,6 @@ public struct Primitives
 
             Mesh = new Mesh(_title, Vector3.Zero, Vector3.One, new Vector3(90, 0, 0),
                 new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices, _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
-            Mesh.Name = _title;
         }
     }
     
@@ -164,13 +161,21 @@ public struct Primitives
 
             Mesh = new Mesh(_title, new Vector3(0, 1, -2.5f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0, 0, 0),
                 Color4.White, _vertices, _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName, isLightSource);
-            Mesh.Name = _title;
+        }
+    }
+    
+    public struct LightSphere
+    {
+        public LightSphere()
+        {
+            Statics.LoadModelFile("Resources\\sphere.fbx", true);
         }
     }
 }
 
 public class Mesh
 {
+    public static readonly List<Mesh> PointLights = new();
     public static readonly List<Mesh> Meshes = new();
     public Vector3 Position => Statics.Numerics3ToOpentk3(_position);
     
@@ -183,6 +188,7 @@ public class Mesh
     private readonly int _indexCount;
     private readonly string _title;
 
+    
     private readonly bool _isLightSource;
 
     private System.Numerics.Vector3 _position;
@@ -190,11 +196,11 @@ public class Mesh
     private System.Numerics.Vector3 _rotation;
     private System.Numerics.Vector4 _color;
 
+    private bool _isUsingTexture;
     private readonly float[] _vertices;
     private readonly uint[] _indices;
 
-    public string Name = "Unnamed";
-    public bool _isSelected;
+    public string Name => _title;
 
     private struct Material
     {
@@ -213,7 +219,7 @@ public class Mesh
         
     }
 
-    public Mesh(string title, Vector3 position, Vector3 scale, Vector3 rotation, Color4 color, float[] vertices, uint[] indices, string diffuseTexturePath, string specularTexturePath, bool isLightSource = false)
+    public Mesh(string title, Vector3 position, Vector3 scale, Vector3 rotation, Color4 color, float[] vertices, uint[] indices, string diffuseTexturePath, string specularTexturePath, bool isLightSource = false, bool isUsingTexture = false)
     {
         _objectMaterial = new Material(diffuseTexturePath, specularTexturePath);
         _position = Statics.Opentk3ToNumerics3(position);
@@ -224,6 +230,7 @@ public class Mesh
         _indices = indices;
         _title = title;
         _isLightSource = isLightSource;
+        _isUsingTexture = isUsingTexture;
 
         _vao = GL.GenVertexArray();
         GL.BindVertexArray(_vao);
@@ -250,11 +257,13 @@ public class Mesh
         GL.BindVertexArray(0);
         
         
+        if(_isLightSource)
+            PointLights.Add(this);
         
         Meshes.Add(this);
     }
 
-    public void UpdateObjectData(/*Object lightSource, */Vector3 cameraPosition)
+    public void UpdateObjectData(Vector3 cameraPosition)
     {
         var sca = _scale;
         var rot = _rotation;
@@ -278,13 +287,17 @@ public class Mesh
             _objectMaterial.SpecularTexture.Use(TextureUnit.Texture1);
             shader?.SetInt("material.specular", 1);
             shader?.SetFloat("material.shininess", 32.0f);
+            shader?.SetColor4("material.color", _objectMaterial.Color4);
+
             
+            shader?.SetVector3("dirLight.color", Statics.Numerics3ToOpentk3(Statics.SunColor / 255));
             shader?.SetVector3("dirLight.direction", new Vector3(-0.2f, -1.0f, -0.3f));
             shader?.SetVector3("dirLight.ambient", new Vector3(0.05f, 0.05f, 0.05f));
             shader?.SetVector3("dirLight.diffuse", new Vector3(0.4f, 0.4f, 0.4f));
             shader?.SetVector3("dirLight.specular", new Vector3(0.5f, 0.5f, 0.5f));
+            shader?.SetInt("isUsingTexture", _isUsingTexture ? 1 : 0);
 
-            for (int i = 0; i < Main.PointLightPositions.Length; i++)
+            for (var i = 0; i < PointLights.Count; i++)
             {
                 shader?.SetVector3($"pointLights[{i}].position", Main.PointLightPositions[i]);
                 shader?.SetVector3($"pointLights[{i}].ambient", new Vector3(0.05f, 0.05f, 0.05f));
@@ -293,11 +306,12 @@ public class Mesh
                 shader?.SetFloat($"pointLights[{i}].constant", 1.0f);
                 shader?.SetFloat($"pointLights[{i}].linear", 0.09f);
                 shader?.SetFloat($"pointLights[{i}].quadratic", 0.032f);
+                shader?.SetVector3($"pointLights[{i}].color", new Vector3(PointLights[i]._color.X, PointLights[i]._color.Y, PointLights[i]._color.Z));
             }
         }
         else
         {
-            shader?.SetColor4("lightColor", Statics.Numerics4ToColor4(Vector4.One));
+            shader?.SetColor4("lightColor", Statics.Numerics4ToColor4(_color));
         }
         
         _modelMatrix = Matrix4.CreateScale(Statics.Numerics3ToOpentk3(sca)) * 
@@ -319,9 +333,6 @@ public class Mesh
         GL.UniformMatrix4(GL.GetUniformLocation((int)shaderProgram, "model"), true, ref _modelMatrix);
         GL.BindVertexArray(_vao);
         GL.DrawElements(PrimitiveType.Triangles, _indexCount, DrawElementsType.UnsignedInt, 0);
-        
-        
-        if(!_isSelected) return;
         
         if (!ImGui.Begin("Object Settings")) return;
         ImGui.Text(_title + "'s Transform");

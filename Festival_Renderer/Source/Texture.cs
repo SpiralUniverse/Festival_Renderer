@@ -1,6 +1,4 @@
 using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
-using StbImageSharp;
-
 namespace Festival_Renderer.Source;
 
 public class Texture

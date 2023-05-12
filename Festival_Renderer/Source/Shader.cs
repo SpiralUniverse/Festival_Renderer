@@ -56,8 +56,10 @@ public class Shader
         if (code != (int)All.True)
         {
             var infoLog = GL.GetShaderInfoLog(shader);
+            Console.WriteLine(infoLog);
             throw new Exception($"Error occurred whilst compiling Shader({shader}).\n\n{infoLog}");
         }
+
     }
 
     private static void LinkProgram(int program)
