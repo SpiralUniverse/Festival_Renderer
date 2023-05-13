@@ -1,18 +1,16 @@
-using Vector4 = System.Numerics.Vector4;
-
 namespace Festival_Renderer.Source;
 
 public struct Primitives
 {
     public struct Cube
     {
-        private readonly uint _id;
+        private readonly int _id;
         private readonly string _title;
         private readonly float[] _vertices;
         private readonly uint[] _indices;
         public readonly Mesh Mesh;
 
-        public Cube(string diffuseTextureName, string specularTextureName, uint id, bool isUsingTexture = true)
+        public Cube(string diffuseTextureName, string specularTextureName, int id, bool isUsingTexture = true)
         {
             _id = id;
             _title = "Cube " + _id;
@@ -66,20 +64,20 @@ public struct Primitives
                 20, 21, 22, 20, 22, 23 // Bottom face
             };
             
-            Mesh = new Mesh(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
+            Mesh = new Mesh(_title, _id, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
                 _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName, isUsingTexture: isUsingTexture);
         }
     }
     
     public struct Triangle
     {
-        private readonly uint _id;
+        private readonly int _id;
         private readonly string _title;
         private readonly float[] _vertices;
         private readonly uint[] _indices;
         public Mesh Mesh;
 
-        public Triangle(string diffuseTextureName, string specularTextureName, uint id)
+        public Triangle(string diffuseTextureName, string specularTextureName, int id)
         {
             _id = id;
             _title = "Triangle " + _id;
@@ -95,20 +93,20 @@ public struct Primitives
                 0, 1, 2
             };
             
-            Mesh = new Mesh(_title, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
+            Mesh = new Mesh(_title, _id, Vector3.Zero, Vector3.One, Vector3.Zero, new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices,
                 _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
         }
     }
 
     public struct Plane
     {
-        private readonly uint _id;
+        private readonly int _id;
         private readonly string _title;
         private readonly float[] _vertices;
         private readonly uint[] _indices;
         public Mesh Mesh;
 
-        public Plane(string diffuseTextureName, string specularTextureName, uint id)
+        public Plane(string diffuseTextureName, string specularTextureName, int id)
         {
             _id = id;
             _title = "Plane " + _id;
@@ -127,20 +125,20 @@ public struct Primitives
                 0, 2, 3
             };
 
-            Mesh = new Mesh(_title, Vector3.Zero, Vector3.One, new Vector3(90, 0, 0),
+            Mesh = new Mesh(_title, _id, Vector3.Zero, Vector3.One, new Vector3(90, 0, 0),
                 new Color4(0.5f, 0.5f, 0.5f, 1.0f), _vertices, _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName);
         }
     }
     
     public struct LightPlane
     {
-        private readonly uint _id;
+        private readonly int _id;
         private readonly string _title;
         private readonly float[] _vertices;
         private readonly uint[] _indices;
         public readonly Mesh Mesh;
 
-        public LightPlane(string diffuseTextureName, string specularTextureName, uint id, bool isLightSource)
+        public LightPlane(string diffuseTextureName, string specularTextureName, int id, bool isLightSource)
         {
             _id = id;
             _title = "Light Plane " + _id;
@@ -159,7 +157,7 @@ public struct Primitives
                 0, 2, 3
             };
 
-            Mesh = new Mesh(_title, new Vector3(0, 1, -2.5f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0, 0, 0),
+            Mesh = new Mesh(_title, _id, new Vector3(0, 1, -2.5f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0, 0, 0),
                 Color4.White, _vertices, _indices, "Resources//" + diffuseTextureName, "Resources//" + specularTextureName, isLightSource);
         }
     }
@@ -178,6 +176,7 @@ public class Mesh
     public static readonly List<Mesh> PointLights = new();
     public static readonly List<Mesh> Meshes = new();
     public Vector3 Position => Statics.Numerics3ToOpentk3(_position);
+    public int Id => _id;
     
     private Matrix4 _modelMatrix;
     private  Material _objectMaterial;
@@ -187,6 +186,7 @@ public class Mesh
     private readonly int _ebo;
     private readonly int _indexCount;
     private readonly string _title;
+    private int _id;
 
     
     private readonly bool _isLightSource;
@@ -219,7 +219,7 @@ public class Mesh
         
     }
 
-    public Mesh(string title, Vector3 position, Vector3 scale, Vector3 rotation, Color4 color, float[] vertices, uint[] indices, string diffuseTexturePath, string specularTexturePath, bool isLightSource = false, bool isUsingTexture = false)
+    public Mesh(string title,int id, Vector3 position, Vector3 scale, Vector3 rotation, Color4 color, float[] vertices, uint[] indices, string diffuseTexturePath, string specularTexturePath, bool isLightSource = false, bool isUsingTexture = false)
     {
         _objectMaterial = new Material(diffuseTexturePath, specularTexturePath);
         _position = Statics.Opentk3ToNumerics3(position);
@@ -231,6 +231,7 @@ public class Mesh
         _title = title;
         _isLightSource = isLightSource;
         _isUsingTexture = isUsingTexture;
+        _id = id;
 
         _vao = GL.GenVertexArray();
         GL.BindVertexArray(_vao);

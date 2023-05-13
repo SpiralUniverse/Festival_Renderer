@@ -74,7 +74,7 @@ public static class Statics
             Vector3 position = new(pos.X, pos.Y, pos.Z), scale = new(sca.X, sca.Y, sca.Z);
             Color4 color = Color4.White;
 
-            Mesh mesh = new Mesh(scene.Meshes[j].Name, position, scale, rotation, color, vertices, indices, "Resources//container2.png", "Resources//container2_specular.png");
+            Mesh mesh = new Mesh(scene.Meshes[j].Name, Mesh.Meshes.Count + 1, position, scale, rotation, color, vertices, indices, "Resources//container2.png", "Resources//container2_specular.png");
             Console.WriteLine(scene.Meshes[j].Name  + " " + position);
         }
 
@@ -139,7 +139,7 @@ public static class Statics
             Vector3 rotation = new Vector3(0, 0, 0);
             Color4 color = new Color4(255, 255, 255, 255);
 
-            Mesh mesh = new Mesh("Light " + Mesh.PointLights.Count + 1, position, scale / 3, rotation, color, vertices, indices, "Resources//container2.png", "Resources//container2_specular.png", isLightSource);
+            Mesh mesh = new Mesh("Light " + Mesh.PointLights.Count + 1, Mesh.Meshes.Count + 1, position, scale / 3, rotation, color, vertices, indices, "Resources//container2.png", "Resources//container2_specular.png", isLightSource);
         }
 
     }

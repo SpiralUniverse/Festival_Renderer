@@ -52,6 +52,9 @@ private struct CameraConfig
 private CameraConfig _cameraConfig;
 private int _cameraType = 0;
 
+/// <summary>
+/// position of spotLights in TentScene
+/// </summary>
 public static readonly Vector3[] PointLightPositions =
 {
     new Vector3(0.7f, 0.2f, 2.0f),
@@ -117,19 +120,19 @@ public static Shader? LightShader;
         GL.Enable(EnableCap.CullFace);
         GL.CullFace(CullFaceMode.Back);
         GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-        GL.ClearColor(new Color4(0, 32, 48, 255));
+        GL.ClearColor(new Color4(64, 64, 64, 255));
         
-        _skyColor = new(0, 0.1254902f, 0.1882353f);
+        _skyColor = new(64f / 255, 64f / 255, 64f / 255);
         
         foreach (Vector3 position in PointLightPositions)
         {
             var light = new Primitives.LightSphere();
-            Mesh.PointLights[^1].SetPosition(position);
+            Mesh.PointLights[Mesh.PointLights.Count - 1].SetPosition(position);
         }
-
-        var c = new Primitives.Cube("container2.png", "container2_specular.png", 1, false);
-        var p = new Primitives.Cube("container2.png", "container2_specular.png", 2);
+        //Statics.LoadModelFile("");
+        Primitives.Cube cube = new Primitives.Cube("container2.png", "container2_specular.png", Mesh.Meshes.Count);
     }
+        
     
 /// <summary>
 /// OnResize Event called when app window is resized.
@@ -159,6 +162,10 @@ public static Shader? LightShader;
         
     }
 
+/// <summary>
+/// Updates Eye view based on Mouse Wheel rotation
+/// </summary>
+/// <param name="e"></param>
 protected override void OnMouseWheel(MouseWheelEventArgs e)
 {
     base.OnMouseWheel(e);
@@ -216,9 +223,15 @@ protected override void OnMouseWheel(MouseWheelEventArgs e)
     protected override void OnUpdateFrame(FrameEventArgs args)
     {
         if (KeyboardState.IsKeyPressed(Keys.Escape)) Close();
-        
-
+        if (KeyboardState.IsKeyPressed(Keys.Delete) && _selectedMesh != null) Mesh.Meshes.RemoveAt(_selectedMesh.Id); 
         _camera.SetCameraConfig(_cameraConfig.DepthNear, _cameraConfig.DepthFar, _cameraConfig.ScreenWidth, _cameraConfig.ScreenHeight, _cameraConfig.IsPerspectiveCamera, _cameraConfig.Fovy);
+        
+        if (KeyboardState.IsKeyPressed(Keys.F)) // centers camera focus point
+        {
+            _cameraOffset = _selectedMesh != null ? _selectedMesh.Position : Vector3.Zero;
+        }
+
+
         Vector4 position = new Vector4(_camera.Eye.X, _camera.Eye.Y, _camera.Eye.Z, 1);
         Vector4 pivot = new Vector4(_camera.LookAt.X, _camera.LookAt.Y, _camera.LookAt.Z, 1);
 
@@ -246,7 +259,8 @@ protected override void OnMouseWheel(MouseWheelEventArgs e)
             _cameraOffset = _camera.RightVector * (MouseState.X - _lastMousePos.X) + _camera.UpVector * (_lastMousePos.Y - MouseState.Y);
             _cameraOffset *= 0.1f;
             _camera.SetLookAt(_camera.LookAt + _cameraOffset);
-            _camera.SetCameraView(position.Xyz + _cameraOffset, _camera.LookAt, _camera.UpVector); 
+            _camera.SetCameraView(position.Xyz + _cameraOffset, _camera.LookAt, _camera.UpVector);
+            Console.WriteLine(_cameraOffset);
         }
 
         if (_selectedMesh != null)
@@ -362,7 +376,6 @@ protected override void OnMouseWheel(MouseWheelEventArgs e)
     {
         _camera.SetCameraView(_camera.Eye, mesh.Position, _camera.UpVector);
         _selectedMesh = mesh;
-        //TODO: finish implementation.
     }
 
     /// <summary>
@@ -409,10 +422,10 @@ protected override void OnMouseWheel(MouseWheelEventArgs e)
         ImGui.Checkbox("DepthTest", ref _depthTest);
         ImGui.Checkbox("Transparency", ref _alphaBlend);
         ImGui.Checkbox("Culling", ref _cullFace);
-        
-        if (ImGui.ColorEdit3("Sky Color", ref _skyColor))
-            GL.ClearColor(Statics.Numerics3ToOpentk3(_skyColor).X, Statics.Numerics3ToOpentk3(_skyColor).Y,
-                Statics.Numerics3ToOpentk3(_skyColor).Z, 1);
+
+        ImGui.ColorEdit3("Sky Color", ref _skyColor);
+        GL.ClearColor(Statics.Numerics3ToOpentk3(_skyColor).X, Statics.Numerics3ToOpentk3(_skyColor).Y,
+            Statics.Numerics3ToOpentk3(_skyColor).Z, 1);
         
         if(_depthTest)
             GL.Enable(EnableCap.DepthTest);
@@ -428,7 +441,7 @@ protected override void OnMouseWheel(MouseWheelEventArgs e)
             GL.Enable(EnableCap.CullFace);
         else
             GL.Disable(EnableCap.CullFace);
-        _modelPath = @"C:\Users\Khalid\Documents\mon.fbx";
+        _modelPath = @"C:\Users\Khalid\Documents\med.obj";
         ImGui.InputText("Model Path", ref _modelPath, 256);
         if (ImGui.Button("Load FBX File") || KeyboardState.IsKeyPressed(Keys.Enter))
         {
@@ -444,6 +457,7 @@ protected override void OnMouseWheel(MouseWheelEventArgs e)
         ImGui.DragFloat("clip near", ref _cameraConfig.DepthNear, Statics.DragSensitivity);
         ImGui.DragFloat("clip far", ref _cameraConfig.DepthFar, Statics.DragSensitivity);
         ImGui.DragFloat("FOV", ref _cameraConfig.Fovy, Statics.DragSensitivity);
+        ImGui.Text($"selected Mesh is {(_selectedMesh == null ? "null" : _selectedMesh.Name)}");
         if (ImGui.BeginCombo("camera type", _cameraType == 0 ? "Perspective" : "Orthographic"))
         {
             if (ImGui.Selectable("perspective", _cameraType == 0))
