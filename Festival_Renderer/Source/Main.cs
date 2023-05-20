@@ -105,7 +105,7 @@ public static Shader? LightShader;
     {
         base.OnLoad();
 
-        using (Stream stream = File.OpenRead("iconTest.png"))
+        using (Stream stream = File.OpenRead("full logo trans.png"))
         {
             ImageResult image = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
             Icon = new WindowIcon(new OpenTK.Windowing.Common.Input.Image(image.Width, image.Height, image.Data));
@@ -441,7 +441,7 @@ protected override void OnMouseWheel(MouseWheelEventArgs e)
             GL.Enable(EnableCap.CullFace);
         else
             GL.Disable(EnableCap.CullFace);
-        _modelPath = @"C:\Users\Khalid\Documents\med.obj";
+ 
         ImGui.InputText("Model Path", ref _modelPath, 256);
         if (ImGui.Button("Load FBX File") || KeyboardState.IsKeyPressed(Keys.Enter))
         {
